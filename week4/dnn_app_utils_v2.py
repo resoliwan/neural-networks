@@ -1,19 +1,105 @@
 import numpy as np
-import h5py
 import matplotlib.pyplot as plt
-from testCases_v2 import *
-from dnn_utils_v2 import sigmoid, sigmoid_backward, relu, relu_backward
+import h5py
 
-plt.rcParams['figure.figsize'] = (5.0, 4.0)
-plt.rcParams['image.interpolation'] = 'nearest'
-plt.rcParams['image.cmap'] = 'gray'
 
-# %load_ext autoreload
-# %autoreload 2
+def sigmoid(Z):
+    """
+    Implements the sigmoid activation in numpy
+    
+    Arguments:
+    Z -- numpy array of any shape
+    
+    Returns:
+    A -- output of sigmoid(z), same shape as Z
+    cache -- returns Z as well, useful during backpropagation
+    """
+    
+    A = 1/(1+np.exp(-Z))
+    cache = Z
+    
+    return A, cache
 
-np.random.seed(1)
+def relu(Z):
+    """
+    Implement the RELU function.
 
-# GRADED FUNCTION: initialize_parameters
+    Arguments:
+    Z -- Output of the linear layer, of any shape
+
+    Returns:
+    A -- Post-activation parameter, of the same shape as Z
+    cache -- a python dictionary containing "A" ; stored for computing the backward pass efficiently
+    """
+    
+    A = np.maximum(0,Z)
+    
+    assert(A.shape == Z.shape)
+    
+    cache = Z 
+    return A, cache
+
+
+def relu_backward(dA, cache):
+    """
+    Implement the backward propagation for a single RELU unit.
+
+    Arguments:
+    dA -- post-activation gradient, of any shape
+    cache -- 'Z' where we store for computing backward propagation efficiently
+
+    Returns:
+    dZ -- Gradient of the cost with respect to Z
+    """
+    
+    Z = cache
+    dZ = np.array(dA, copy=True) # just converting dz to a correct object.
+    
+    # When z <= 0, you should set dz to 0 as well. 
+    dZ[Z <= 0] = 0
+    
+    assert (dZ.shape == Z.shape)
+    
+    return dZ
+
+def sigmoid_backward(dA, cache):
+    """
+    Implement the backward propagation for a single SIGMOID unit.
+
+    Arguments:
+    dA -- post-activation gradient, of any shape
+    cache -- 'Z' where we store for computing backward propagation efficiently
+
+    Returns:
+    dZ -- Gradient of the cost with respect to Z
+    """
+    
+    Z = cache
+    
+    s = 1/(1+np.exp(-Z))
+    dZ = dA * s * (1-s)
+    
+    assert (dZ.shape == Z.shape)
+    
+    return dZ
+
+
+def load_data():
+    train_dataset = h5py.File('datasets/train_catvnoncat.h5', "r")
+    train_set_x_orig = np.array(train_dataset["train_set_x"][:]) # your train set features
+    train_set_y_orig = np.array(train_dataset["train_set_y"][:]) # your train set labels
+
+    test_dataset = h5py.File('datasets/test_catvnoncat.h5', "r")
+    test_set_x_orig = np.array(test_dataset["test_set_x"][:]) # your test set features
+    test_set_y_orig = np.array(test_dataset["test_set_y"][:]) # your test set labels
+
+    classes = np.array(test_dataset["list_classes"][:]) # the list of classes
+    
+    train_set_y_orig = train_set_y_orig.reshape((1, train_set_y_orig.shape[0]))
+    test_set_y_orig = test_set_y_orig.reshape((1, test_set_y_orig.shape[0]))
+    
+    return train_set_x_orig, train_set_y_orig, test_set_x_orig, test_set_y_orig, classes
+
 
 def initialize_parameters(n_x, n_h, n_y):
     """
@@ -32,12 +118,10 @@ def initialize_parameters(n_x, n_h, n_y):
     
     np.random.seed(1)
     
-    ### START CODE HERE ### (≈ 4 lines of code)
-    W1 = np.random.randn(n_h, n_x) * 0.01
+    W1 = np.random.randn(n_h, n_x)*0.01
     b1 = np.zeros((n_h, 1))
-    W2 = np.random.randn(n_y, n_h) * 0.01
+    W2 = np.random.randn(n_y, n_h)*0.01
     b2 = np.zeros((n_y, 1))
-    ### END CODE HERE ###
     
     assert(W1.shape == (n_h, n_x))
     assert(b1.shape == (n_h, 1))
@@ -49,21 +133,13 @@ def initialize_parameters(n_x, n_h, n_y):
                   "W2": W2,
                   "b2": b2}
     
-    return parameters    
+    return parameters     
 
-parameters = initialize_parameters(2,2,1)
-print("W1 = " + str(parameters["W1"]))
-print("b1 = " + str(parameters["b1"]))
-print("W2 = " + str(parameters["W2"]))
-print("b2 = " + str(parameters["b2"]))
-
-# GRADED FUNCTION: initialize_parameters_deep
 
 def initialize_parameters_deep(layer_dims):
     """
     Arguments:
     layer_dims -- python array (list) containing the dimensions of each layer in our network
-    ex) [3, 4, 1]
     
     Returns:
     parameters -- python dictionary containing your parameters "W1", "b1", ..., "WL", "bL":
@@ -71,29 +147,19 @@ def initialize_parameters_deep(layer_dims):
                     bl -- bias vector of shape (layer_dims[l], 1)
     """
     
-    np.random.seed(3)
+    np.random.seed(1)
     parameters = {}
     L = len(layer_dims)            # number of layers in the network
 
     for l in range(1, L):
-        ### START CODE HERE ### (≈ 2 lines of code)
-        parameters['W' + str(l)] = np.random.randn(layer_dims[l], layer_dims[l - 1]) * 0.01
+        parameters['W' + str(l)] = np.random.randn(layer_dims[l], layer_dims[l-1]) / np.sqrt(layer_dims[l-1]) #*0.01
         parameters['b' + str(l)] = np.zeros((layer_dims[l], 1))
-        ### END CODE HERE ###
         
         assert(parameters['W' + str(l)].shape == (layer_dims[l], layer_dims[l-1]))
         assert(parameters['b' + str(l)].shape == (layer_dims[l], 1))
 
         
     return parameters
-
-parameters = initialize_parameters_deep([5,4,3])
-print("W1 = " + str(parameters["W1"]))
-print("b1 = " + str(parameters["b1"]))
-print("W2 = " + str(parameters["W2"]))
-print("b2 = " + str(parameters["b2"]))
-
-# GRADED FUNCTION: linear_forward
 
 def linear_forward(A, W, b):
     """
@@ -109,20 +175,12 @@ def linear_forward(A, W, b):
     cache -- a python dictionary containing "A", "W" and "b" ; stored for computing the backward pass efficiently
     """
     
-    ### START CODE HERE ### (≈ 1 line of code)
-    Z = np.dot(W, A) + b
-    ### END CODE HERE ###
+    Z = W.dot(A) + b
     
     assert(Z.shape == (W.shape[0], A.shape[1]))
     cache = (A, W, b)
     
     return Z, cache
-
-A, W, b = linear_forward_test_case()
-Z, linear_cache = linear_forward(A, W, b)
-print("Z = " + str(Z))
-
-# GRADED FUNCTION: linear_activation_forward
 
 def linear_activation_forward(A_prev, W, b, activation):
     """
@@ -142,33 +200,18 @@ def linear_activation_forward(A_prev, W, b, activation):
     
     if activation == "sigmoid":
         # Inputs: "A_prev, W, b". Outputs: "A, activation_cache".
-        ### START CODE HERE ### (≈ 2 lines of code)
         Z, linear_cache = linear_forward(A_prev, W, b)
         A, activation_cache = sigmoid(Z)
-        ### END CODE HERE ###
     
     elif activation == "relu":
         # Inputs: "A_prev, W, b". Outputs: "A, activation_cache".
-        ### START CODE HERE ### (≈ 2 lines of code)
         Z, linear_cache = linear_forward(A_prev, W, b)
         A, activation_cache = relu(Z)
-        ### END CODE HERE ###
     
     assert (A.shape == (W.shape[0], A_prev.shape[1]))
     cache = (linear_cache, activation_cache)
 
     return A, cache
-
-
-A_prev, W, b = linear_activation_forward_test_case()
-
-A, linear_activation_cache = linear_activation_forward(A_prev, W, b, activation = "sigmoid")
-print("With sigmoid: A = " + str(A))
-
-A, linear_activation_cache = linear_activation_forward(A_prev, W, b, activation = "relu")
-print("With ReLU: A = " + str(A))
-
-# GRADED FUNCTION: L_model_forward
 
 def L_model_forward(X, parameters):
     """
@@ -192,28 +235,16 @@ def L_model_forward(X, parameters):
     # Implement [LINEAR -> RELU]*(L-1). Add "cache" to the "caches" list.
     for l in range(1, L):
         A_prev = A 
-        ### START CODE HERE ### (≈ 2 lines of code)
-        A, cache = linear_activation_forward(A_prev, parameters['W' + str(l)], parameters['b1'], activation='relu')
+        A, cache = linear_activation_forward(A_prev, parameters['W' + str(l)], parameters['b' + str(l)], activation = "relu")
         caches.append(cache)
-        ### END CODE HERE ###
     
     # Implement LINEAR -> SIGMOID. Add "cache" to the "caches" list.
-    ### START CODE HERE ### (≈ 2 lines of code)
-    AL, cache = linear_activation_forward(A, parameters['W' + str(L)], parameters['b' + str(L)], activation='sigmoid')
+    AL, cache = linear_activation_forward(A, parameters['W' + str(L)], parameters['b' + str(L)], activation = "sigmoid")
     caches.append(cache)
-    
-    ### END CODE HERE ###
     
     assert(AL.shape == (1,X.shape[1]))
             
     return AL, caches
-
-X, parameters = L_model_forward_test_case()
-AL, caches = L_model_forward(X, parameters)
-print("AL = " + str(AL))
-print("Length of caches list = " + str(len(caches)))
-
-# GRADED FUNCTION: compute_cost
 
 def compute_cost(AL, Y):
     """
@@ -230,19 +261,12 @@ def compute_cost(AL, Y):
     m = Y.shape[1]
 
     # Compute loss from aL and y.
-    cost = (-1/m) * np.sum((np.multiply(Y, np.log(AL)) + np.multiply((1-Y), np.log(1 - AL))))
-    ### END CODE HERE ###
+    cost = (1./m) * (-np.dot(Y,np.log(AL).T) - np.dot(1-Y, np.log(1-AL).T))
     
     cost = np.squeeze(cost)      # To make sure your cost's shape is what we expect (e.g. this turns [[17]] into 17).
     assert(cost.shape == ())
     
     return cost
-
-Y, AL = compute_cost_test_case()
-
-print("cost = " + str(compute_cost(AL, Y)))
-
-# GRADED FUNCTION: linear_backward
 
 def linear_backward(dZ, cache):
     """
@@ -260,27 +284,15 @@ def linear_backward(dZ, cache):
     A_prev, W, b = cache
     m = A_prev.shape[1]
 
-    ### START CODE HERE ### (≈ 3 lines of code)
-    dW = (1/m) * np.dot(dZ, A_prev.T)
-    db = (1/m) * np.sum(dZ, axis=1).reshape(dZ.shape[0], 1)
-    dA_prev = np.dot(W.T, dZ)
-    ### END CODE HERE ###
+    dW = 1./m * np.dot(dZ,A_prev.T)
+    db = 1./m * np.sum(dZ, axis = 1, keepdims = True)
+    dA_prev = np.dot(W.T,dZ)
     
     assert (dA_prev.shape == A_prev.shape)
     assert (dW.shape == W.shape)
     assert (db.shape == b.shape)
     
     return dA_prev, dW, db
-
-# Set up some test inputs
-dZ, linear_cache = linear_backward_test_case()
-
-dA_prev, dW, db = linear_backward(dZ, linear_cache)
-print ("dA_prev = "+ str(dA_prev))
-print ("dW = " + str(dW))
-print ("db = " + str(db))
-
-# GRADED FUNCTION: linear_activation_backward
 
 def linear_activation_backward(dA, cache, activation):
     """
@@ -299,33 +311,14 @@ def linear_activation_backward(dA, cache, activation):
     linear_cache, activation_cache = cache
     
     if activation == "relu":
-        ### START CODE HERE ### (≈ 2 lines of code)
         dZ = relu_backward(dA, activation_cache)
         dA_prev, dW, db = linear_backward(dZ, linear_cache)
-        ### END CODE HERE ###
         
     elif activation == "sigmoid":
-        ### START CODE HERE ### (≈ 2 lines of code)
         dZ = sigmoid_backward(dA, activation_cache)
         dA_prev, dW, db = linear_backward(dZ, linear_cache)
-        ### END CODE HERE ###
+    
     return dA_prev, dW, db
-
-AL, linear_activation_cache = linear_activation_backward_test_case()
-
-dA_prev, dW, db = linear_activation_backward(AL, linear_activation_cache, activation = "sigmoid")
-print ("sigmoid:")
-print ("dA_prev = "+ str(dA_prev))
-print ("dW = " + str(dW))
-print ("db = " + str(db) + "\n")
-
-dA_prev, dW, db = linear_activation_backward(AL, linear_activation_cache, activation = "relu")
-print ("relu:")
-print ("dA_prev = "+ str(dA_prev))
-print ("dW = " + str(dW))
-print ("db = " + str(db))
-
-# GRADED FUNCTION: L_model_backward
 
 def L_model_backward(AL, Y, caches):
     """
@@ -335,8 +328,8 @@ def L_model_backward(AL, Y, caches):
     AL -- probability vector, output of the forward propagation (L_model_forward())
     Y -- true "label" vector (containing 0 if non-cat, 1 if cat)
     caches -- list of caches containing:
-                every cache of linear_activation_forward() with "relu" (it's caches[l], for l in range(L-1) i.e l = 0...L-2)
-                the cache of linear_activation_forward() with "sigmoid" (it's caches[L-1])
+                every cache of linear_activation_forward() with "relu" (there are (L-1) or them, indexes from 0 to L-2)
+                the cache of linear_activation_forward() with "sigmoid" (there is one, index L-1)
     
     Returns:
     grads -- A dictionary with the gradients
@@ -350,36 +343,21 @@ def L_model_backward(AL, Y, caches):
     Y = Y.reshape(AL.shape) # after this line, Y is the same shape as AL
     
     # Initializing the backpropagation
-    ### START CODE HERE ### (1 line of code)
     dAL = - (np.divide(Y, AL) - np.divide(1 - Y, 1 - AL))
-    ### END CODE HERE ###
     
     # Lth layer (SIGMOID -> LINEAR) gradients. Inputs: "AL, Y, caches". Outputs: "grads["dAL"], grads["dWL"], grads["dbL"]
-    ### START CODE HERE ### (approx. 2 lines)
-    current_cache = linear_activation_backward(dAL, caches[L - 1], activation='sigmoid')
-    grads["dA" + str(L)], grads["dW" + str(L)], grads["db" + str(L)] = current_cache
-    ### END CODE HERE ###
+    current_cache = caches[L-1]
+    grads["dA" + str(L)], grads["dW" + str(L)], grads["db" + str(L)] = linear_activation_backward(dAL, current_cache, activation = "sigmoid")
     
     for l in reversed(range(L-1)):
         # lth layer: (RELU -> LINEAR) gradients.
-        # Inputs: "grads["dA" + str(l + 2)], caches". Outputs: "grads["dA" + str(l + 1)] , grads["dW" + str(l + 1)] , grads["db" + str(l + 1)] 
-        ### START CODE HERE ### (approx. 5 lines)
-        current_cache = linear_activation_backward(grads["dA" + str(l+2)], caches[l], activation='relu')
-        dA_prev_temp, dW_temp, db_temp = current_cache
+        current_cache = caches[l]
+        dA_prev_temp, dW_temp, db_temp = linear_activation_backward(grads["dA" + str(l + 2)], current_cache, activation = "relu")
         grads["dA" + str(l + 1)] = dA_prev_temp
         grads["dW" + str(l + 1)] = dW_temp
         grads["db" + str(l + 1)] = db_temp
-        ### END CODE HERE ###
 
     return grads
-
-AL, Y_assess, caches = L_model_backward_test_case()
-grads = L_model_backward(AL, Y_assess, caches)
-print ("dW1 = "+ str(grads["dW1"]))
-print ("db1 = "+ str(grads["db1"]))
-print ("dA1 = "+ str(grads["dA1"]))
-
-# GRADED FUNCTION: update_parameters
 
 def update_parameters(parameters, grads, learning_rate):
     """
@@ -398,18 +376,61 @@ def update_parameters(parameters, grads, learning_rate):
     L = len(parameters) // 2 # number of layers in the neural network
 
     # Update rule for each parameter. Use a for loop.
-    ### START CODE HERE ### (≈ 3 lines of code)
     for l in range(L):
-        parameters["W" + str(l+1)] = parameters["W" + str(l+1)] - learning_rate * grads['dW' + str(l+1)]
-        parameters["b" + str(l+1)] = parameters["b" + str(l+1)] - learning_rate * grads['db' + str(l+1)]
-    ### END CODE HERE ###
+        parameters["W" + str(l+1)] = parameters["W" + str(l+1)] - learning_rate * grads["dW" + str(l+1)]
+        parameters["b" + str(l+1)] = parameters["b" + str(l+1)] - learning_rate * grads["db" + str(l+1)]
         
     return parameters
 
-parameters, grads = update_parameters_test_case()
-parameters = update_parameters(parameters, grads, 0.1)
+def predict(X, y, parameters):
+    """
+    This function is used to predict the results of a  L-layer neural network.
+    
+    Arguments:
+    X -- data set of examples you would like to label
+    parameters -- parameters of the trained model
+    
+    Returns:
+    p -- predictions for the given dataset X
+    """
+    
+    m = X.shape[1]
+    n = len(parameters) // 2 # number of layers in the neural network
+    p = np.zeros((1,m))
+    
+    # Forward propagation
+    probas, caches = L_model_forward(X, parameters)
 
-print ("W1 = "+ str(parameters["W1"]))
-print ("b1 = "+ str(parameters["b1"]))
-print ("W2 = "+ str(parameters["W2"]))
-print ("b2 = "+ str(parameters["b2"]))
+    
+    # convert probas to 0/1 predictions
+    for i in range(0, probas.shape[1]):
+        if probas[0,i] > 0.5:
+            p[0,i] = 1
+        else:
+            p[0,i] = 0
+    
+    #print results
+    #print ("predictions: " + str(p))
+    #print ("true labels: " + str(y))
+    print("Accuracy: "  + str(np.sum((p == y)/m)))
+        
+    return p
+
+def print_mislabeled_images(classes, X, y, p):
+    """
+    Plots images where predictions and truth were different.
+    X -- dataset
+    y -- true labels
+    p -- predictions
+    """
+    a = p + y
+    mislabeled_indices = np.asarray(np.where(a == 1))
+    plt.rcParams['figure.figsize'] = (40.0, 40.0) # set default size of plots
+    num_images = len(mislabeled_indices[0])
+    for i in range(num_images):
+        index = mislabeled_indices[1][i]
+        
+        plt.subplot(2, num_images, i + 1)
+        plt.imshow(X[:,index].reshape(64,64,3), interpolation='nearest')
+        plt.axis('off')
+        plt.title("Prediction: " + classes[int(p[0,index])].decode("utf-8") + " \n Class: " + classes[y[0,index]].decode("utf-8"))
